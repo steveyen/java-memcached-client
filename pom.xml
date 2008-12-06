@@ -1,0 +1,79 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.googlecode</groupId>
+    <artifactId>java-memcached-client</artifactId>
+    <packaging>jar</packaging>
+    <version>2.3-SNAPSHOT</version>
+    <name>java-memcached-client</name>
+    <url>http://code.google.com/p/spymemcached/</url>
+
+    <licenses>
+        <license>
+            <name>Unknown</name>
+            <url>http://github.com/dustin/java-memcached-client/tree/master/LICENSE.txt</url>
+        </license>
+    </licenses>
+
+    <repositories>
+        <repository>
+            <id>spy</id>
+            <name>spy</name>
+            <url>http://bleu.west.spy.net/~dustin/repo</url>
+            <layout>legacy</layout>
+        </repository>
+    </repositories>
+
+
+    <scm>
+        <connection>scm:git:git://github.com/dustin/java-memcached-client.git</connection>
+        <developerConnection>scm:git:git://github.com/dustin/java-memcached-client.git</developerConnection>
+        <url>http://github.com/dustin/java-memcached-client/</url>
+    </scm>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>1.5</source>
+                    <target>1.5</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-eclipse-plugin</artifactId>
+                <configuration>
+                    <downloadSources>true</downloadSources>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-idea-plugin</artifactId>
+                <configuration>
+                    <downloadSources>true</downloadSources>
+                    <downloadJavadocs>false</downloadJavadocs>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>spy</groupId>
+            <artifactId>spy</artifactId>
+            <version>2.4</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jmock</groupId>
+            <artifactId>jmock</artifactId>
+            <version>1.2.0</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
