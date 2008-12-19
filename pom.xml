@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.googlecode</groupId>
+    <groupId>net.spy</groupId>
     <artifactId>java-memcached-client</artifactId>
     <packaging>jar</packaging>
     <version>2.3-SNAPSHOT</version>
@@ -21,6 +21,10 @@
             <name>spy</name>
             <url>http://bleu.west.spy.net/~dustin/repo</url>
             <layout>legacy</layout>
+        </repository>
+        <repository>
+            <id>don-asf-repository</id>
+            <url>http://people.apache.org/~mrdon/repository/</url>
         </repository>
     </repositories>
 
@@ -53,6 +57,28 @@
                     <downloadSources>true</downloadSources>
                     <downloadJavadocs>false</downloadJavadocs>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.maven.scm</groupId>
+                        <artifactId>maven-scm-provider-gitexe</artifactId>
+                        <version>1.1-db-1</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-scm-plugin</artifactId>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.maven.scm</groupId>
+                        <artifactId>maven-scm-provider-gitexe</artifactId>
+                        <version>1.1-db-1</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>
