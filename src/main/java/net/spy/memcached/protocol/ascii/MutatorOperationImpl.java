@@ -3,9 +3,11 @@
 package net.spy.memcached.protocol.ascii;
 
 import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Collections;
 
 import net.spy.memcached.KeyUtil;
-import net.spy.memcached.ops.MutatatorOperation;
+import net.spy.memcached.ops.MutatorOperation;
 import net.spy.memcached.ops.Mutator;
 import net.spy.memcached.ops.OperationCallback;
 import net.spy.memcached.ops.OperationState;
@@ -15,7 +17,7 @@ import net.spy.memcached.ops.OperationStatus;
  * Operation for mutating integers inside of memcached.
  */
 final class MutatorOperationImpl extends OperationImpl
-	implements MutatatorOperation {
+	implements MutatorOperation {
 
 	public static final int OVERHEAD=32;
 
@@ -60,6 +62,26 @@ final class MutatorOperationImpl extends OperationImpl
 	protected void wasCancelled() {
 		// XXX:  Replace this comment with why the hell I did this.
 		getCallback().receivedStatus(CANCELLED);
+	}
+
+	public Collection<String> getKeys() {
+		return Collections.singleton(key);
+	}
+
+	public int getBy() {
+		return amount;
+	}
+
+	public long getDefault() {
+		return -1;
+	}
+
+	public int getExpiration() {
+		return -1;
+	}
+
+	public Mutator getType() {
+		return mutator;
 	}
 
 }

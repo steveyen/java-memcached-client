@@ -25,7 +25,8 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 
-import net.spy.SpyObject;
+import net.spy.memcached.compat.SpyObject;
+import net.spy.memcached.ops.KeyedOperation;
 import net.spy.memcached.ops.Operation;
 import net.spy.memcached.ops.OperationState;
 
@@ -50,6 +51,7 @@ public final class MemcachedConnection extends SpyObject {
 	private boolean optimizeGets=true;
 	private Selector selector=null;
 	private final NodeLocator locator;
+	private final FailureMode failureMode;
 	private int emptySelects=0;
 	// AddedQueue is used to track the QueueAttachments for which operations
 	// have recently been queued.
@@ -57,6 +59,10 @@ public final class MemcachedConnection extends SpyObject {
 	// reconnectQueue contains the attachments that need to be reconnected
 	// The key is the time at which they are eligible for reconnect
 	private final SortedMap<Long, MemcachedNode> reconnectQueue;
+
+	private final Collection<ConnectionObserver> connObservers =
+		new ConcurrentLinkedQueue<ConnectionObserver>();
+	private final OperationFactory opFact;
 
 	/**
 	 * Construct a memcached connection.
@@ -68,10 +74,14 @@ public final class MemcachedConnection extends SpyObject {
 	 * @throws IOException if a connection attempt fails early
 	 */
 	public MemcachedConnection(int bufSize, ConnectionFactory f,
-			List<InetSocketAddress> a)
+			List<InetSocketAddress> a, Collection<ConnectionObserver> obs,
+			FailureMode fm, OperationFactory opfactory)
 		throws IOException {
+		connObservers.addAll(obs);
 		reconnectQueue=new TreeMap<Long, MemcachedNode>();
 		addedQueue=new ConcurrentLinkedQueue<MemcachedNode>();
+		failureMode = fm;
+		opFact = opfactory;
 		selector=Selector.open();
 		List<MemcachedNode> connections=new ArrayList<MemcachedNode>(a.size());
 		for(SocketAddress sa : a) {
@@ -81,8 +91,7 @@ public final class MemcachedConnection extends SpyObject {
 			int ops=0;
 			if(ch.connect(sa)) {
 				getLogger().info("Connected to %s immediately", qa);
-				qa.connected();
-				assert ch.isConnected();
+				connected(qa);
 			} else {
 				getLogger().info("Added %s to connect queue", qa);
 				ops=SelectionKey.OP_CONNECT;
@@ -169,7 +178,7 @@ public final class MemcachedConnection extends SpyObject {
 						getLogger().info("%s has a ready op, handling IO", sk);
 						handleIO(sk);
 					} else {
-						queueReconnect((MemcachedNode)sk.attachment());
+						lostConnection((MemcachedNode)sk.attachment());
 					}
 				}
 				assert emptySelects < EXCESSIVE_EMPTY
@@ -227,12 +236,46 @@ public final class MemcachedConnection extends SpyObject {
 						}
 					} catch(IOException e) {
 						getLogger().warn("Exception handling write", e);
-						queueReconnect(qa);
+						lostConnection(qa);
 					}
 				}
 				qa.fixupOps();
 			}
 			addedQueue.addAll(toAdd);
+		}
+	}
+
+	/**
+	 * Add a connection observer.
+	 *
+	 * @return whether the observer was successfully added
+	 */
+	public boolean addObserver(ConnectionObserver obs) {
+		return connObservers.add(obs);
+	}
+
+	/**
+	 * Remove a connection observer.
+	 *
+	 * @return true if the observer existed and now doesn't
+	 */
+	public boolean removeObserver(ConnectionObserver obs) {
+		return connObservers.remove(obs);
+	}
+
+	private void connected(MemcachedNode qa) {
+		assert qa.getChannel().isConnected() : "Not connected.";
+		int rt = qa.getReconnectCount();
+		qa.connected();
+		for(ConnectionObserver observer : connObservers) {
+			observer.connectionEstablished(qa.getSocketAddress(), rt);
+		}
+	}
+
+	private void lostConnection(MemcachedNode qa) {
+		queueReconnect(qa);
+		for(ConnectionObserver observer : connObservers) {
+			observer.connectionLost(qa.getSocketAddress());
 		}
 	}
 
@@ -249,8 +292,7 @@ public final class MemcachedConnection extends SpyObject {
 				getLogger().info("Connection state changed for %s", sk);
 				final SocketChannel channel=qa.getChannel();
 				if(channel.finishConnect()) {
-					assert channel.isConnected() : "Not connected.";
-					qa.connected();
+					connected(qa);
 					addedQueue.offer(qa);
 					if(qa.getWbuf().hasRemaining()) {
 						handleWrites(sk, qa);
@@ -270,7 +312,7 @@ public final class MemcachedConnection extends SpyObject {
 			if(!shutDown) {
 				getLogger().info("Closed channel and not shutting down.  "
 					+ "Queueing reconnect on %s", qa, e);
-				queueReconnect(qa);
+				lostConnection(qa);
 			}
 
 		} catch(Exception e) {
@@ -370,6 +412,38 @@ public final class MemcachedConnection extends SpyObject {
 
 			// Need to do a little queue management.
 			qa.setupResend();
+
+			if(failureMode == FailureMode.Redistribute) {
+				redistributeOperations(qa.destroyInputQueue());
+			} else if(failureMode == FailureMode.Cancel) {
+				cancelOperations(qa.destroyInputQueue());
+			}
+		}
+	}
+
+	private void cancelOperations(Collection<Operation> ops) {
+		for(Operation op : ops) {
+			op.cancel();
+		}
+	}
+
+	private void redistributeOperations(Collection<Operation> ops) {
+		for(Operation op : ops) {
+			if(op instanceof KeyedOperation) {
+				KeyedOperation ko = (KeyedOperation)op;
+				int added = 0;
+				for(String k : ko.getKeys()) {
+					for(Operation newop : opFact.clone(ko)) {
+						addOperation(k, newop);
+						added++;
+					}
+				}
+				assert added > 0
+					: "Didn't add any new operations when redistributing";
+			} else {
+				// Cancel things that don't have definite targets.
+				op.cancel();
+			}
 		}
 	}
 
@@ -428,8 +502,10 @@ public final class MemcachedConnection extends SpyObject {
 	public void addOperation(final String key, final Operation o) {
 		MemcachedNode placeIn=null;
 		MemcachedNode primary = locator.getPrimary(key);
-		if(primary.isActive()) {
+		if(primary.isActive() || failureMode == FailureMode.Retry) {
 			placeIn=primary;
+		} else if(failureMode == FailureMode.Cancel) {
+			o.cancel();
 		} else {
 			// Look for another node in sequence that is ready.
 			for(Iterator<MemcachedNode> i=locator.getSequence(key);
@@ -446,8 +522,14 @@ public final class MemcachedConnection extends SpyObject {
 			}
 		}
 
-		assert placeIn != null : "No node found for key " + key;
-		addOperation(placeIn, o);
+		assert o.isCancelled() || placeIn != null
+			: "No node found for key " + key;
+		if(placeIn != null) {
+			addOperation(placeIn, o);
+		} else {
+			assert o.isCancelled() : "No not found for "
+				+ key + " (and not immediately cancelled)";
+		}
 	}
 
 	public void addOperation(final MemcachedNode node, final Operation o) {

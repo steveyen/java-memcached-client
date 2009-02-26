@@ -24,7 +24,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import net.spy.SpyThread;
+import net.spy.memcached.compat.SpyThread;
 import net.spy.memcached.ops.CASOperationStatus;
 import net.spy.memcached.ops.CancelledOperationStatus;
 import net.spy.memcached.ops.ConcatenationType;
@@ -38,7 +38,6 @@ import net.spy.memcached.ops.OperationState;
 import net.spy.memcached.ops.OperationStatus;
 import net.spy.memcached.ops.StatsOperation;
 import net.spy.memcached.ops.StoreType;
-import net.spy.memcached.transcoders.SerializingTranscoder;
 import net.spy.memcached.transcoders.Transcoder;
 
 /**
@@ -96,7 +95,7 @@ public final class MemcachedClient extends SpyThread implements MemcachedClientI
 	private final MemcachedConnection conn;
 	final OperationFactory opFact;
 
-	Transcoder<Object> transcoder=null;
+	final Transcoder<Object> transcoder;
 
 	/**
 	 * Get a memcache client operating on the specified memcached locations.
@@ -142,7 +141,7 @@ public final class MemcachedClient extends SpyThread implements MemcachedClientI
 			throw new IllegalArgumentException(
 				"Operation timeout must be positive.");
 		}
-		transcoder=new SerializingTranscoder();
+		transcoder=cf.getDefaultTranscoder();
 		opFact=cf.getOperationFactory();
 		assert opFact != null : "Connection factory failed to make op factory";
 		conn=cf.createConnection(addrs);
@@ -196,17 +195,6 @@ public final class MemcachedClient extends SpyThread implements MemcachedClientI
 	 */
 	public NodeLocator getNodeLocator() {
 		return conn.getLocator().getReadonlyCopy();
-	}
-
-	/**
-	 * Set the default transcoder for managing the cache representations
-	 * of objects going in and out of the cache.
-	 */
-	public void setTranscoder(Transcoder<Object> tc) {
-		if(tc == null) {
-			throw new NullPointerException("Can't use a null transcoder");
-		}
-		transcoder=tc;
 	}
 
 	/**
@@ -403,7 +391,7 @@ public final class MemcachedClient extends SpyThread implements MemcachedClientI
 		final CountDownLatch latch=new CountDownLatch(1);
 		final OperationFuture<CASResponse> rv=new OperationFuture<CASResponse>(
 				latch, operationTimeout);
-		Operation op=opFact.cas(key, casId, co.getFlags(), exp,
+		Operation op=opFact.cas(StoreType.set, key, casId, co.getFlags(), exp,
 				co.getData(), new OperationCallback() {
 					public void receivedStatus(OperationStatus val) {
 						if(val instanceof CASOperationStatus) {
@@ -1531,6 +1519,24 @@ public final class MemcachedClient extends SpyThread implements MemcachedClientI
 		} catch (InterruptedException e) {
 			throw new RuntimeException("Interrupted waiting for queues", e);
 		}
+	}
+
+	/**
+	 * Add a connection observer.
+	 *
+	 * @return true if the observer was added.
+	 */
+	public boolean addObserver(ConnectionObserver obs) {
+		return conn.addObserver(obs);
+	}
+
+	/**
+	 * Remove a connection observer.
+	 *
+	 * @return true if the observer existed, but no longer does
+	 */
+	public boolean removeObserver(ConnectionObserver obs) {
+		return conn.removeObserver(obs);
 	}
 
 	static class BulkGetFuture<T> implements Future<Map<String, T>> {

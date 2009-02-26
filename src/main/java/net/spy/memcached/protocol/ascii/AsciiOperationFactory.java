@@ -1,8 +1,9 @@
 package net.spy.memcached.protocol.ascii;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
-import net.spy.memcached.OperationFactory;
+import net.spy.memcached.ops.BaseOperationFactory;
 import net.spy.memcached.ops.CASOperation;
 import net.spy.memcached.ops.ConcatenationOperation;
 import net.spy.memcached.ops.ConcatenationType;
@@ -10,9 +11,12 @@ import net.spy.memcached.ops.DeleteOperation;
 import net.spy.memcached.ops.FlushOperation;
 import net.spy.memcached.ops.GetOperation;
 import net.spy.memcached.ops.GetsOperation;
-import net.spy.memcached.ops.MutatatorOperation;
+import net.spy.memcached.ops.KeyedOperation;
+import net.spy.memcached.ops.MultiGetOperationCallback;
+import net.spy.memcached.ops.MutatorOperation;
 import net.spy.memcached.ops.Mutator;
 import net.spy.memcached.ops.NoopOperation;
+import net.spy.memcached.ops.Operation;
 import net.spy.memcached.ops.OperationCallback;
 import net.spy.memcached.ops.StatsOperation;
 import net.spy.memcached.ops.StoreOperation;
@@ -22,7 +26,7 @@ import net.spy.memcached.ops.VersionOperation;
 /**
  * Operation factory for the ascii protocol.
  */
-public final class AsciiOperationFactory implements OperationFactory {
+public final class AsciiOperationFactory extends BaseOperationFactory {
 
 	public DeleteOperation delete(String key, OperationCallback cb) {
 		return new DeleteOperationImpl(key, cb);
@@ -44,7 +48,7 @@ public final class AsciiOperationFactory implements OperationFactory {
 		 return new GetsOperationImpl(key, cb);
 	}
 
-	public MutatatorOperation mutate(Mutator m, String key, int by,
+	public MutatorOperation mutate(Mutator m, String key, int by,
 			long exp, int def, OperationCallback cb) {
 		return new MutatorOperationImpl(m, key, by, cb);
 	}
@@ -66,8 +70,8 @@ public final class AsciiOperationFactory implements OperationFactory {
 		return new VersionOperationImpl(cb);
 	}
 
-	public CASOperation cas(String key, long casId, int flags, int exp,
-			byte[] data, OperationCallback cb) {
+	public CASOperation cas(StoreType type, String key, long casId, int flags,
+			int exp, byte[] data, OperationCallback cb) {
 		return new CASOperationImpl(key, casId, flags, exp, data, cb);
 	}
 
@@ -75,6 +79,17 @@ public final class AsciiOperationFactory implements OperationFactory {
 			long casId,
 			String key, byte[] data, OperationCallback cb) {
 		return new ConcatenationOperationImpl(catType, key, data, cb);
+	}
+
+	@Override
+	protected Collection<? extends Operation> cloneGet(KeyedOperation op) {
+		Collection<Operation> rv=new ArrayList<Operation>();
+		GetOperation.Callback callback = new MultiGetOperationCallback(
+				op.getCallback(), op.getKeys().size());
+		for(String k : op.getKeys()) {
+			rv.add(get(k, callback));
+		}
+		return rv;
 	}
 
 }

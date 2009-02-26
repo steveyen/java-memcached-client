@@ -4,10 +4,12 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 import net.spy.memcached.ops.Operation;
+import net.spy.memcached.transcoders.Transcoder;
 
 /**
  * Factory for creating instances of MemcachedConnection.
@@ -69,4 +71,23 @@ public interface ConnectionFactory {
 	 * If true, the IO thread should be a daemon thread.
 	 */
 	boolean isDaemon();
+
+	/**
+	 * Observers that should be established at the time of connection
+	 * instantiation.
+	 *
+	 * These observers will see the first connection established.
+	 */
+	Collection<ConnectionObserver> getInitialObservers();
+
+	/**
+	 * Get the default failure mode for the underlying connection.
+	 */
+	FailureMode getFailureMode();
+
+	/**
+	 * Get the default transcoder to be used in connections created by this
+	 * factory.
+	 */
+	Transcoder<Object> getDefaultTranscoder();
 }

@@ -1,8 +1,9 @@
 package net.spy.memcached.protocol.binary;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
-import net.spy.memcached.OperationFactory;
+import net.spy.memcached.ops.BaseOperationFactory;
 import net.spy.memcached.ops.CASOperation;
 import net.spy.memcached.ops.ConcatenationOperation;
 import net.spy.memcached.ops.ConcatenationType;
@@ -10,9 +11,13 @@ import net.spy.memcached.ops.DeleteOperation;
 import net.spy.memcached.ops.FlushOperation;
 import net.spy.memcached.ops.GetOperation;
 import net.spy.memcached.ops.GetsOperation;
-import net.spy.memcached.ops.MutatatorOperation;
+import net.spy.memcached.ops.KeyedOperation;
+import net.spy.memcached.ops.MultiGetOperationCallback;
+import net.spy.memcached.ops.MultiGetsOperationCallback;
+import net.spy.memcached.ops.MutatorOperation;
 import net.spy.memcached.ops.Mutator;
 import net.spy.memcached.ops.NoopOperation;
+import net.spy.memcached.ops.Operation;
 import net.spy.memcached.ops.OperationCallback;
 import net.spy.memcached.ops.StatsOperation;
 import net.spy.memcached.ops.StoreOperation;
@@ -23,7 +28,7 @@ import net.spy.memcached.ops.GetOperation.Callback;
 /**
  * Factory for binary operations.
  */
-public class BinaryOperationFactory implements OperationFactory {
+public class BinaryOperationFactory extends BaseOperationFactory {
 
 	public DeleteOperation delete(String key,
 		OperationCallback operationCallback) {
@@ -46,7 +51,7 @@ public class BinaryOperationFactory implements OperationFactory {
 		return new GetOperationImpl(key, cb);
 	}
 
-	public MutatatorOperation mutate(Mutator m, String key, int by,
+	public MutatorOperation mutate(Mutator m, String key, int by,
 			long def, int exp, OperationCallback cb) {
 		return new MutatorOperationImpl(m, key, by, def, exp, cb);
 	}
@@ -69,15 +74,33 @@ public class BinaryOperationFactory implements OperationFactory {
 		return new NoopOperationImpl(cb);
 	}
 
-	public CASOperation cas(String key, long casId, int flags, int exp,
-			byte[] data, OperationCallback cb) {
-		return new StoreOperationImpl(StoreType.set, key, flags, exp, data,
+	public CASOperation cas(StoreType type, String key, long casId, int flags,
+			int exp, byte[] data, OperationCallback cb) {
+		return new StoreOperationImpl(type, key, flags, exp, data,
 				casId, cb);
 	}
 
 	public ConcatenationOperation cat(ConcatenationType catType, long casId,
 			String key, byte[] data, OperationCallback cb) {
 		return new ConcatenationOperationImpl(catType, key, data, casId, cb);
+	}
+
+	@Override
+	protected Collection<? extends Operation> cloneGet(KeyedOperation op) {
+		Collection<Operation> rv=new ArrayList<Operation>();
+		GetOperation.Callback getCb = null;
+		GetsOperation.Callback getsCb = null;
+		if(op.getCallback() instanceof GetOperation.Callback) {
+			getCb=new MultiGetOperationCallback(
+					op.getCallback(), op.getKeys().size());
+		} else {
+			getsCb=new MultiGetsOperationCallback(
+					op.getCallback(), op.getKeys().size());
+		}
+		for(String k : op.getKeys()) {
+			rv.add(getCb == null ? gets(k, getsCb) : get(k, getCb));
+		}
+		return rv;
 	}
 
 }

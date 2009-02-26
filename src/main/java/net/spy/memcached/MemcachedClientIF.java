@@ -21,8 +21,6 @@ public interface MemcachedClientIF {
 
 	Collection<SocketAddress> getUnavailableServers();
 
-	void setTranscoder(Transcoder<Object> tc);
-
 	Transcoder<Object> getTranscoder();
 
 	NodeLocator getNodeLocator();
@@ -139,4 +137,8 @@ public interface MemcachedClientIF {
 	boolean shutdown(long timeout, TimeUnit unit);
 
 	boolean waitForQueues(long timeout, TimeUnit unit);
+
+	boolean addObserver(ConnectionObserver obs);
+
+	boolean removeObserver(ConnectionObserver obs);
 }

@@ -4,23 +4,28 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
-import net.spy.SpyObject;
+import net.spy.memcached.compat.SpyObject;
 import net.spy.memcached.ops.Operation;
 import net.spy.memcached.protocol.ascii.AsciiMemcachedNodeImpl;
 import net.spy.memcached.protocol.ascii.AsciiOperationFactory;
+import net.spy.memcached.transcoders.SerializingTranscoder;
+import net.spy.memcached.transcoders.Transcoder;
 
 /**
  * Default implementation of ConnectionFactory.
  *
  * <p>
- * This implementation creates connections where each server worker queue is
- * implemented using an ArrayBlockingQueue.  The read queue is automatically
- * configured to be 10% larger than the specified op queue.  The write queue
- * is and input queues are the same size.
+ * This implementation creates connections where the operation queue is an
+ * ArrayBlockingQueue and the read and write queues are unbounded
+ * LinkedBlockingQueues.  The <code>Redistribute</code> FailureMode is used
+ * by default.
  * </p>
  */
 public class DefaultConnectionFactory extends SpyObject
@@ -88,7 +93,15 @@ public class DefaultConnectionFactory extends SpyObject
 	 */
 	public MemcachedConnection createConnection(List<InetSocketAddress> addrs)
 		throws IOException {
-		return new MemcachedConnection(getReadBufSize(), this, addrs);
+		return new MemcachedConnection(getReadBufSize(), this, addrs,
+			getInitialObservers(), getFailureMode(), getOperationFactory());
+	}
+
+	/* (non-Javadoc)
+	 * @see net.spy.memcached.ConnectionFactory#getFailureMode()
+	 */
+	public FailureMode getFailureMode() {
+		return FailureMode.Redistribute;
 	}
 
 	/* (non-Javadoc)
@@ -102,15 +115,14 @@ public class DefaultConnectionFactory extends SpyObject
 	 * @see net.spy.memcached.ConnectionFactory#createReadOperationQueue()
 	 */
 	public BlockingQueue<Operation> createReadOperationQueue() {
-		return new ArrayBlockingQueue<Operation>(
-			(int) (getOpQueueLen() * 1.1));
+		return new LinkedBlockingQueue<Operation>();
 	}
 
 	/* (non-Javadoc)
 	 * @see net.spy.memcached.ConnectionFactory#createWriteOperationQueue()
 	 */
 	public BlockingQueue<Operation> createWriteOperationQueue() {
-		return createOperationQueue();
+		return new LinkedBlockingQueue<Operation>();
 	}
 
 	/* (non-Javadoc)
@@ -160,6 +172,20 @@ public class DefaultConnectionFactory extends SpyObject
 	 */
 	public boolean isDaemon() {
 		return false;
+	}
+
+	/* (non-Javadoc)
+	 * @see net.spy.memcached.ConnectionFactory#getInitialObservers()
+	 */
+	public Collection<ConnectionObserver> getInitialObservers() {
+		return Collections.emptyList();
+	}
+
+	/* (non-Javadoc)
+	 * @see net.spy.memcached.ConnectionFactory#getDefaultTranscoder()
+	 */
+	public Transcoder<Object> getDefaultTranscoder() {
+		return new SerializingTranscoder();
 	}
 
 }

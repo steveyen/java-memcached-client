@@ -1,9 +1,12 @@
-package net.spy.memcached;
+package net.spy.memcached.test;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import junit.framework.TestCase;
+import net.spy.memcached.AddrUtil;
+import net.spy.memcached.DefaultConnectionFactory;
+import net.spy.memcached.MemcachedClient;
 
 /**
  * Adaptation of http://code.google.com/p/spcached/wiki/benchmarktool
@@ -22,17 +25,17 @@ public class MemcachedThreadBench extends TestCase {
 	}
 
 	public void testCrap() throws Exception {
-		main(new String[]{"1000", "100", "11211", "100"});
+		main(new String[]{"10000", "100", "11211", "100"});
 	}
 
 	public static void main(String[] args) throws Exception {
 
 		if (args.length != 4) {
+            args = new String[]{"1000", "100", "11211", "100"};
 			System.out.println("Usage: java "
 					+ MemcachedThreadBench.class.getName()
 					+ " <runs> <start> <port> <threads>");
-			System.exit(1);
-		}
+        }
 
 		int runs = Integer.parseInt(args[0]);
 		int start = Integer.parseInt(args[1]);

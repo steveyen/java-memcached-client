@@ -8,7 +8,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 
-public class FailingServerTest extends ClientBaseCase {
+public class RedistributeFailureModeTest extends ClientBaseCase {
 
 	private String serverList;
 
@@ -27,6 +27,16 @@ public class FailingServerTest extends ClientBaseCase {
 	@Override
 	protected void initClient(ConnectionFactory cf) throws Exception {
 		client=new MemcachedClient(cf, AddrUtil.getAddresses(serverList));
+	}
+
+	@Override
+	protected void initClient() throws Exception {
+		initClient(new DefaultConnectionFactory() {
+			@Override
+			public FailureMode getFailureMode() {
+				return FailureMode.Redistribute;
+			}
+		});
 	}
 
 	@Override

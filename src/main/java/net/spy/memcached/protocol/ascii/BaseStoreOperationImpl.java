@@ -1,6 +1,8 @@
 package net.spy.memcached.protocol.ascii;
 
 import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Collections;
 
 import net.spy.memcached.KeyUtil;
 import net.spy.memcached.ops.OperationCallback;
@@ -59,4 +61,19 @@ abstract class BaseStoreOperationImpl extends OperationImpl {
 		getCallback().receivedStatus(CANCELLED);
 	}
 
+	public Collection<String> getKeys() {
+		return Collections.singleton(key);
+	}
+
+	public int getFlags() {
+		return flags;
+	}
+
+	public int getExpiration() {
+		return exp;
+	}
+
+	public byte[] getData() {
+		return data;
+	}
 }

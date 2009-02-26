@@ -10,9 +10,21 @@ import net.spy.memcached.ops.OperationCallback;
 public class ConcatenationOperationImpl extends BaseStoreOperationImpl
 		implements ConcatenationOperation {
 
+	private final ConcatenationType concatType;
+
 	public ConcatenationOperationImpl(ConcatenationType t, String k,
 		byte[] d, OperationCallback cb) {
 		super(t.name(), k, 0, 0, d, cb);
+		concatType = t;
+	}
+
+	public long getCasValue() {
+		// ASCII cat ops don't have CAS.
+		return 0;
+	}
+
+	public ConcatenationType getStoreType() {
+		return concatType;
 	}
 
 }

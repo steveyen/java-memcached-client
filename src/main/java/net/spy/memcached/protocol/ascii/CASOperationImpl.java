@@ -1,6 +1,8 @@
 package net.spy.memcached.protocol.ascii;
 
 import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Collections;
 
 import net.spy.memcached.CASResponse;
 import net.spy.memcached.KeyUtil;
@@ -9,6 +11,7 @@ import net.spy.memcached.ops.CASOperationStatus;
 import net.spy.memcached.ops.OperationCallback;
 import net.spy.memcached.ops.OperationState;
 import net.spy.memcached.ops.OperationStatus;
+import net.spy.memcached.ops.StoreType;
 
 class CASOperationImpl extends OperationImpl implements CASOperation {
 
@@ -65,6 +68,30 @@ class CASOperationImpl extends OperationImpl implements CASOperation {
 	protected void wasCancelled() {
 		// XXX:  Replace this comment with why I did this
 		getCallback().receivedStatus(CANCELLED);
+	}
+
+	public Collection<String> getKeys() {
+		return Collections.singleton(key);
+	}
+
+	public byte[] getBytes() {
+		return data;
+	}
+
+	public long getCasValue() {
+		return casValue;
+	}
+
+	public int getExpiration() {
+		return exp;
+	}
+
+	public int getFlags() {
+		return flags;
+	}
+
+	public StoreType getStoreType() {
+		return StoreType.set;
 	}
 
 }

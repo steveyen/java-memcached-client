@@ -1,20 +1,23 @@
 package net.spy.memcached.protocol.binary;
 
+import java.util.Collection;
+import java.util.Collections;
+
 import net.spy.memcached.ops.CASOperation;
-import net.spy.memcached.ops.ConcatenationOperation;
 import net.spy.memcached.ops.OperationCallback;
 import net.spy.memcached.ops.OperationStatus;
 import net.spy.memcached.ops.StoreOperation;
 import net.spy.memcached.ops.StoreType;
 
 class StoreOperationImpl extends OperationImpl
-	implements StoreOperation, CASOperation, ConcatenationOperation {
+	implements StoreOperation, CASOperation {
 
 	private static final int SET=1;
 	private static final int ADD=2;
 	private static final int REPLACE=3;
 
 	private final String key;
+	private final StoreType storeType;
 	private final int flags;
 	private final int exp;
 	private final long cas;
@@ -40,6 +43,7 @@ class StoreOperationImpl extends OperationImpl
 		exp=e;
 		data=d;
 		cas=c;
+		storeType=t;
 	}
 
 	@Override
@@ -59,6 +63,34 @@ class StoreOperationImpl extends OperationImpl
 				break;
 		}
 		return rv;
+	}
+
+	public Collection<String> getKeys() {
+		return Collections.singleton(key);
+	}
+
+	public byte[] getBytes() {
+		return data;
+	}
+
+	public long getCasValue() {
+		return cas;
+	}
+
+	public int getExpiration() {
+		return exp;
+	}
+
+	public int getFlags() {
+		return flags;
+	}
+
+	public byte[] getData() {
+		return data;
+	}
+
+	public StoreType getStoreType() {
+		return storeType;
 	}
 
 }
