@@ -1,6 +1,6 @@
 .settings
 cobertura.ser
-target/
+target
 reports/
 junit*
 *.iml
