@@ -90,4 +90,11 @@ public interface ConnectionFactory {
 	 * factory.
 	 */
 	Transcoder<Object> getDefaultTranscoder();
+
+	/**
+	 * Get the read buffer size set at construct time.
+	 */
+	int getReadBufSize();
+
+	public HashAlgorithm getHashAlg();
 }
